@@ -1,0 +1,428 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hub académico</title>
+<style>
+  :root{
+    --bg:#05020c;
+    --p1:#8b5cf6;
+    --p2:#a78bfa;
+    --txt:#efe9ff;
+    --mute:#a99bd0;
+    --bar:48px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    color:var(--txt);
+    background:
+      radial-gradient(900px 500px at 15% -10%, rgba(139,92,246,.35), transparent 60%),
+      radial-gradient(800px 500px at 100% 110%, rgba(109,40,217,.30), transparent 60%),
+      linear-gradient(rgba(167,139,250,.05) 1px, transparent 1px) 0 0/48px 48px,
+      linear-gradient(90deg, rgba(167,139,250,.05) 1px, transparent 1px) 0 0/48px 48px,
+      var(--bg);
+    background-attachment:fixed;
+    overflow:hidden;
+  }
+
+  /* ---------- Barra superior ---------- */
+  #topbar{
+    position:fixed;inset:0 0 auto 0;height:var(--bar);z-index:40;
+    display:flex;align-items:center;gap:6px;padding:0 10px;
+    background:rgba(12,5,26,.72);
+    backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+    border-bottom:1px solid rgba(167,139,250,.28);
+    box-shadow:0 6px 24px rgba(0,0,0,.45);
+  }
+  #hubBtn,#moreBtn,.sc{
+    font:inherit;color:var(--txt);cursor:pointer;border:1px solid transparent;
+    background:transparent;border-radius:10px;height:34px;
+    display:flex;align-items:center;gap:8px;padding:0 10px;
+    transition:background .2s,border-color .2s,box-shadow .2s;
+  }
+  #hubBtn:hover,#moreBtn:hover,.sc:hover{background:rgba(139,92,246,.18)}
+  #hubBtn.on,.sc.on{
+    background:rgba(139,92,246,.30);border-color:rgba(167,139,250,.6);
+    box-shadow:0 0 18px rgba(139,92,246,.45);
+  }
+  #hubBtn svg{width:18px;height:18px;fill:currentColor}
+  .sep{width:1px;height:22px;background:rgba(167,139,250,.3);margin:0 4px;flex:none}
+  #shortcuts{display:flex;gap:4px;flex:1;min-width:0;overflow:hidden}
+  .sc{flex:none;max-width:200px}
+  .sc .ic{font-size:15px;line-height:1;color:var(--p2)}
+  .sc .nm{font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .sc .x{
+    margin-left:2px;width:18px;height:18px;border-radius:50%;
+    display:grid;place-items:center;font-size:14px;line-height:1;color:var(--mute);
+  }
+  .sc .x:hover{background:rgba(255,255,255,.14);color:#fff}
+  #moreWrap{position:relative;flex:none}
+  #morePanel{
+    position:absolute;right:0;top:40px;min-width:220px;padding:6px;
+    display:flex;flex-direction:column;gap:2px;border-radius:14px;
+    background:rgba(16,7,34,.92);border:1px solid rgba(167,139,250,.35);
+    backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+    box-shadow:0 14px 40px rgba(0,0,0,.6);
+  }
+  #morePanel[hidden],#moreBtn[hidden]{display:none}
+  #morePanel .sc{max-width:none;width:100%}
+
+  /* ---------- Hub ---------- */
+  #hub{
+    position:fixed;inset:var(--bar) 0 0 0;overflow:auto;padding:48px 24px 64px;
+  }
+  #hub.away{visibility:hidden}
+  .wrap{max-width:1040px;margin:0 auto}
+  h1{
+    font-size:clamp(28px,5vw,44px);letter-spacing:.14em;text-transform:uppercase;font-weight:700;
+    background:linear-gradient(90deg,#fff,var(--p2) 55%,var(--p1));
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+    text-shadow:0 0 40px rgba(139,92,246,.5);
+  }
+  .sub{color:var(--mute);margin:10px 0 36px;font-size:15px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:22px}
+
+  .card{
+    position:relative;display:flex;flex-direction:column;gap:10px;
+    padding:26px;min-height:190px;border-radius:22px;color:var(--txt);text-decoration:none;
+    background:linear-gradient(145deg,rgba(139,92,246,.24),rgba(30,10,60,.38));
+    border:1px solid rgba(167,139,250,.35);
+    backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+    box-shadow:0 12px 40px rgba(0,0,0,.55),0 0 30px rgba(139,92,246,.18),inset 0 1px 0 rgba(255,255,255,.08);
+    transition:transform .25s,box-shadow .25s,border-color .25s;
+  }
+  .card:hover,.card:focus-visible{
+    transform:translateY(-6px);outline:none;border-color:rgba(196,181,253,.7);
+    box-shadow:0 18px 50px rgba(0,0,0,.65),0 0 44px rgba(139,92,246,.45),inset 0 1px 0 rgba(255,255,255,.12);
+  }
+  .card .icon{font-size:34px;line-height:1;color:var(--p2);text-shadow:0 0 18px rgba(139,92,246,.8)}
+  .card h2{font-size:19px;font-weight:650}
+  .card p{font-size:14px;color:var(--mute);line-height:1.45}
+  .card.is-open::after{
+    content:"abierta";position:absolute;top:16px;right:18px;font-size:11px;letter-spacing:.08em;
+    text-transform:uppercase;color:#d9ccff;padding:3px 9px;border-radius:99px;
+    background:rgba(139,92,246,.35);border:1px solid rgba(196,181,253,.5);
+  }
+  .card.lifted{visibility:hidden}
+
+  /* ---------- Tarjeta que gira y crece ---------- */
+  .shell{
+    position:fixed;z-index:30;overflow:hidden;display:grid;place-items:center;text-align:center;
+    background:linear-gradient(145deg,#33167a,#0d0420);
+    border:1px solid rgba(196,181,253,.6);border-radius:22px;
+    box-shadow:0 0 80px rgba(139,92,246,.6);
+    will-change:transform,left,top,width,height;
+  }
+  .shell .icon{display:block;font-size:48px;color:var(--p2);text-shadow:0 0 24px rgba(139,92,246,.9)}
+  .shell h2{margin-top:10px;font-size:22px}
+  .loader{
+    margin:18px auto 0;width:120px;height:3px;border-radius:3px;overflow:hidden;
+    background:rgba(255,255,255,.12);position:relative;
+  }
+  .loader::after{
+    content:"";position:absolute;inset:0 auto 0 -40%;width:40%;border-radius:3px;
+    background:linear-gradient(90deg,transparent,var(--p2),transparent);
+    animation:slide 1.1s infinite ease-in-out;
+  }
+  @keyframes slide{to{left:100%}}
+
+  /* ---------- Escenario con las actividades ---------- */
+  #stage{
+    position:fixed;left:0;right:0;top:var(--bar);bottom:0;z-index:35;
+    background:#0d0420;visibility:hidden;
+  }
+  #stage.on{visibility:visible}
+  .frame{
+    position:absolute;inset:0;width:100%;height:100%;border:0;background:#fff;
+    visibility:hidden;opacity:0;
+  }
+  .frame.on{visibility:visible;opacity:1}
+
+  @media (max-width:560px){
+    .sc .nm{max-width:90px}
+    #hub{padding:32px 16px 48px}
+  }
+</style>
+</head>
+<body>
+
+<header id="topbar">
+  <button id="hubBtn" title="Volver al hub" aria-label="Volver al hub">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z"/></svg>
+    <span>Hub</span>
+  </button>
+  <span class="sep"></span>
+  <nav id="shortcuts" aria-label="Actividades abiertas"></nav>
+  <div id="moreWrap">
+    <button id="moreBtn" title="Más actividades" aria-label="Más actividades" hidden>&raquo;</button>
+    <div id="morePanel" hidden></div>
+  </div>
+</header>
+
+<main id="hub">
+  <div class="wrap">
+    <h1>Hub académico</h1>
+    <p class="sub">Elige una actividad. Las que abras quedarán en la barra de arriba para saltar entre ellas.</p>
+
+    <!--
+      PARA AGREGAR UNA ACTIVIDAD:
+      1) Crea una carpeta en actividades/ con su index.html
+      2) Copia una de las tarjetas de abajo y cambia: href, data-id (único, sin espacios),
+         data-title, data-short (nombre corto para la barra), data-icon, el título y la descripción.
+    -->
+    <div class="grid">
+      <a class="card" href="C:\Users\WINDOWS\OneDrive\Desktop\FITEC_1er_SEMESTRE\Pensamientos_Criticos\Proyecto_Hub_Academico\Cruzando_el_río.html"
+         data-id="damas-criados" data-title="Las 3 damas y los 3 criados" data-short="Damas y criados" data-icon="♛">
+        <span class="icon">♛</span>
+        <h2>Las 3 damas y los 3 criados</h2>
+        <p>Resuelve visualmente el problema del cruce del río, sin hacerlo a mano.</p>
+      </a>
+
+      <a class="card" href="C:\Users\WINDOWS\OneDrive\Desktop\FITEC_1er_SEMESTRE\Pensamientos_Criticos\Proyecto_Hub_Academico\vocales.html"
+         data-id="Cuadros-de-Vocales" data-title="Cuadros de Vocales" data-short="Cuadros de Vocales" data-icon="∧">
+        <span class="icon">∧</span>
+        <h2>Cuadros de Vocales</h2>
+        <p>Explora operadores lógicos y sus resultados de forma interactiva.</p>
+      </a>
+    </div>
+  </div>
+</main>
+
+<div id="stage" aria-live="polite"></div>
+
+<script>
+(() => {
+  const MAX = 6;                    // máximo de actividades abiertas a la vez
+  const BAR_H = 48;
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  const hub = document.getElementById('hub');
+  const stage = document.getElementById('stage');
+  const short = document.getElementById('shortcuts');
+  const hubBtn = document.getElementById('hubBtn');
+  const moreBtn = document.getElementById('moreBtn');
+  const morePanel = document.getElementById('morePanel');
+
+  const cards = [...document.querySelectorAll('.card')];
+  const byId = Object.fromEntries(cards.map(c => [c.dataset.id, c]));
+
+  const open = [];        // { id, title, short, icon, frame, ready }
+  let active = null;      // id de la actividad visible; null = hub
+  let busy = false;
+  let pendingCard = null; // tarjeta que originó la navegación (para animar)
+  let queued;             // ruta pedida mientras la animación está en curso
+
+  /* ---------- Pestañas (actividades abiertas) ---------- */
+  const getTab = id => open.find(t => t.id === id);
+
+  function createTab(id) {
+    const card = byId[id];
+    const frame = document.createElement('iframe');
+    frame.className = 'frame';
+    frame.title = card.dataset.title;
+    frame.src = card.getAttribute('href');
+
+    const tab = {
+      id,
+      title: card.dataset.title,
+      short: card.dataset.short || card.dataset.title,
+      icon: card.dataset.icon || '◆',
+      frame
+    };
+    tab.ready = new Promise(res => {
+      frame.addEventListener('load', res, { once: true });
+      setTimeout(res, 10000);   // no esperar más de 10 s
+    });
+
+    stage.appendChild(frame);
+    open.push(tab);
+    card.classList.add('is-open');
+
+    // Límite: cierra la más antigua que no esté en uso
+    while (open.length > MAX) {
+      const old = open.find(t => t.id !== id && t.id !== active);
+      if (!old) break;
+      removeTab(old.id);
+    }
+    return tab;
+  }
+
+  function removeTab(id) {
+    const i = open.findIndex(t => t.id === id);
+    if (i < 0) return;
+    open[i].frame.remove();
+    open.splice(i, 1);
+    byId[id]?.classList.remove('is-open');
+  }
+
+  function closeTab(id) {
+    const wasActive = active === id;
+    removeTab(id);
+    if (wasActive) navigate(null); else renderBar();
+  }
+
+  /* ---------- Mostrar / ocultar ---------- */
+  function showFrame(tab) {
+    open.forEach(t => t.frame.classList.toggle('on', t === tab));
+    stage.classList.add('on');
+    hub.classList.add('away');
+    active = tab.id;
+    renderBar();
+  }
+
+  function goHub() {
+    open.forEach(t => t.frame.classList.remove('on'));
+    stage.classList.remove('on');
+    hub.classList.remove('away');
+    active = null;
+    renderBar();
+  }
+
+  function fade(el) {
+    if (reduce) return;
+    el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 220, easing: 'ease-out' });
+  }
+
+  /* ---------- Animación: la tarjeta gira, crece y la página emerge dentro ---------- */
+  async function launch(tab, card) {
+    if (!card || reduce) {
+      showFrame(tab);
+      fade(tab.frame);
+      return;
+    }
+    busy = true;
+    const r = card.getBoundingClientRect();
+
+    const shell = document.createElement('div');
+    shell.className = 'shell';
+    const inner = document.createElement('div');
+    const ic = document.createElement('span'); ic.className = 'icon'; ic.textContent = tab.icon;
+    const h = document.createElement('h2'); h.textContent = tab.title;
+    const ld = document.createElement('div'); ld.className = 'loader';
+    inner.append(ic, h, ld);
+    shell.appendChild(inner);
+    Object.assign(shell.style, {
+      left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px'
+    });
+    document.body.appendChild(shell);
+    card.classList.add('lifted');
+
+    const W = innerWidth, H = innerHeight - BAR_H;
+    const grow = shell.animate([
+      { left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px',
+        transform: 'perspective(1200px) rotateY(0deg)', borderRadius: '22px' },
+      { left: '0px', top: BAR_H + 'px', width: W + 'px', height: H + 'px',
+        transform: 'perspective(1200px) rotateY(360deg)', borderRadius: '0px' }
+    ], { duration: 900, easing: 'cubic-bezier(.65,.05,.25,1)', fill: 'forwards' });
+
+    await grow.finished;
+    await tab.ready;                       // si aún carga, se ve el indicador
+
+    showFrame(tab);                        // la página emerge dentro de la tarjeta
+    const emerge = tab.frame.animate([
+      { clipPath: 'inset(35% 35% 35% 35% round 28px)', opacity: 0 },
+      { clipPath: 'inset(0% 0% 0% 0% round 0px)', opacity: 1 }
+    ], { duration: 460, easing: 'ease-out' });
+    await emerge.finished;
+
+    shell.remove();
+    card.classList.remove('lifted');
+    busy = false;
+
+    if (queued !== undefined) { const q = queued; queued = undefined; route(q); }
+  }
+
+  /* ---------- Navegación (el hash de la URL guarda la actividad activa) ---------- */
+  function navigate(id, card) {
+    pendingCard = card || null;
+    const target = id || '';
+    if (location.hash.slice(1) === target) route(id);
+    else location.hash = target;
+  }
+
+  function route(id) {
+    id = id || null;
+    if (busy) { queued = id; return; }
+    if (id === active) return;
+
+    if (!id) { goHub(); return; }
+    if (!byId[id]) { navigate(null); return; }
+
+    const existing = getTab(id);
+    if (existing) {                         // ya estaba abierta: salto directo
+      showFrame(existing);
+      fade(existing.frame);
+      return;
+    }
+    const tab = createTab(id);
+    const card = pendingCard;
+    pendingCard = null;
+    launch(tab, active === null ? card : null);
+  }
+
+  addEventListener('hashchange', () => route(location.hash.slice(1)));
+
+  cards.forEach(card => {
+    card.addEventListener('click', e => {
+      if (e.ctrlKey || e.metaKey || e.shiftKey || e.button !== 0) return; // abrir en pestaña nueva sigue funcionando
+      e.preventDefault();
+      navigate(card.dataset.id, card);
+    });
+  });
+
+  hubBtn.addEventListener('click', () => navigate(null));
+
+  /* ---------- Barra de accesos ---------- */
+  function renderBar() {
+    hubBtn.classList.toggle('on', active === null);
+    short.innerHTML = '';
+    morePanel.innerHTML = '';
+    morePanel.hidden = true;
+
+    open.forEach(t => {
+      const b = document.createElement('button');
+      b.className = 'sc' + (t.id === active ? ' on' : '');
+      b.title = t.title;
+      const ic = document.createElement('span'); ic.className = 'ic'; ic.textContent = t.icon;
+      const nm = document.createElement('span'); nm.className = 'nm'; nm.textContent = t.short;
+      const x = document.createElement('span'); x.className = 'x'; x.textContent = '×';
+      x.title = 'Quitar'; x.setAttribute('role', 'button');
+      b.append(ic, nm, x);
+      b.addEventListener('click', e => {
+        if (e.target.closest('.x')) { e.stopPropagation(); closeTab(t.id); }
+        else navigate(t.id);
+      });
+      short.appendChild(b);
+    });
+
+    // Lo que no cabe se agrupa detrás de »
+    moreBtn.hidden = false;
+    const hidden = [];
+    let guard = 0;
+    while (short.scrollWidth > short.clientWidth + 1 && guard++ < 20) {
+      const cand = [...short.children].reverse().find(el => !el.classList.contains('on'));
+      if (!cand) break;
+      hidden.push(cand);
+      cand.remove();
+    }
+    if (hidden.length) hidden.reverse().forEach(el => morePanel.appendChild(el));
+    else moreBtn.hidden = true;
+  }
+
+  moreBtn.addEventListener('click', e => { e.stopPropagation(); morePanel.hidden = !morePanel.hidden; });
+  document.addEventListener('click', e => {
+    if (!morePanel.hidden && !e.target.closest('#moreWrap')) morePanel.hidden = true;
+  });
+  morePanel.addEventListener('click', () => { morePanel.hidden = true; });
+  addEventListener('resize', renderBar);
+
+  /* ---------- Inicio ---------- */
+  renderBar();
+  route(location.hash.slice(1));
+})();
+</script>
+</body>
+</html>
