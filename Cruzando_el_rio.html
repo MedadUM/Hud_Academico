@@ -1,5 +1,7 @@
 <!DOCTYPE html>
-<html lang="es"><head><meta charset="utf-8">
+<html lang="es">
+<head>
+<meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Cruzando el río</title>
 <style>
@@ -18,10 +20,12 @@ repeating-linear-gradient(100deg,#ffffff22 0 12px,transparent 12px 40px),linear-
 background-size:80px 100%,100% 100%;animation:flow 3s linear infinite}
 @keyframes flow{to{background-position:80px 0,0 0}}
 .p,#boat{position:absolute;transition:left 1.6s ease-in-out,top .5s}
-.p{width:46px;height:56px;text-align:center;font-size:34px;cursor:pointer;user-select:none;line-height:40px;z-index:3}
+.p{width:calc(46px*var(--k,1));height:calc(56px*var(--k,1));text-align:center;font-size:calc(34px*var(--k,1));cursor:pointer;user-select:none;line-height:calc(40px*var(--k,1));z-index:3}
 .p small{display:block;font-size:11px;line-height:12px;font-weight:700;color:#fff;text-shadow:0 1px 2px #000}
 .p:hover{transform:scale(1.12)}
 .p.boat{transition:left 1.6s ease-in-out,top .5s}
+.cat{position:absolute;z-index:3;text-align:center;font-size:10.5px;line-height:14px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#fff;text-shadow:0 1px 2px #0008;border-bottom:1px solid #ffffff66;padding-bottom:1px;pointer-events:none}
+.compact .w{display:none}
 #boat{width:130px;height:50px;top:232px;z-index:2}
 #boat i{position:absolute;inset:18px 0 0;background:#8b5a2b;border-radius:4px 4px 40px 40px;border-top:5px solid #c08a4a;animation:bob 1.2s ease-in-out infinite}
 #boat.go i{animation-duration:.5s}
@@ -39,7 +43,9 @@ button:disabled{opacity:.5;cursor:default}
 #combo{width:100%;max-width:700px;height:110px;box-sizing:border-box;font:13px monospace;border-radius:8px;border:1px solid #8886;background:var(--card);color:var(--tx);padding:8px}
 #over{position:absolute;inset:0;background:#000b;color:#fff;z-index:9;display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:16px;font-size:18px}
 #over h2{font-size:34px;margin:0 0 8px;color:#ff5a4d}
-</style></head><body>
+</style>
+</head>
+<body>
 <h1>⛵ Damas y criados: cruza el río</h1>
 <div id="scene">
  <div class="bank" id="bA"><b>Orilla A</b></div>
@@ -61,27 +67,46 @@ button:disabled{opacity:.5;cursor:default}
 <div id="log"><h2>📋 Registro de cruces</h2><div class="wrap"><table><thead><tr><th>#</th><th>Sentido</th><th>Tipo</th><th>Personas</th><th>Quiénes</th><th>Quedan en A</th><th>Quedan en B</th></tr></thead><tbody id="logBody"><tr><td colspan="7">Aún no hay cruces.</td></tr></tbody></table></div></div>
 <script>
 const scene=document.getElementById('scene'),boatEl=document.getElementById('boat'),msg=document.getElementById('msg'),goBtn=document.getElementById('go');
-let people,boatSide,moving,over,log;
+let people,boatSide,moving,over,log,cats;
 function init(){
-  scene.querySelectorAll('.p').forEach(e=>e.remove());
+  scene.querySelectorAll('.p,.cat').forEach(e=>e.remove());
+  // Rótulos de categoría: Damas y Criados en cada orilla
+  cats=[];
+  ['A','B'].forEach(s=>['D','C'].forEach(t=>{
+    const e=document.createElement('div');e.className='cat';e.textContent=t=='D'?'Damas':'Criados';
+    scene.appendChild(e);cats.push({side:s,t,el:e});
+  }));
   people=[];
   for(let i=1;i<=3;i++){people.push({id:'D'+i,t:'D',side:'A'});people.push({id:'C'+i,t:'C',side:'A'})}
-  people.forEach(p=>{const e=document.createElement('div');e.className='p';e.innerHTML=(p.t=='D'?'👸':'🤵')+'<small>'+(p.t=='D'?'Dama ':'Criado ')+p.id[1]+'</small>';e.onclick=()=>click(p);p.el=e;scene.appendChild(e)});
+  people.forEach(p=>{const e=document.createElement('div');e.className='p';e.innerHTML=(p.t=='D'?'👸':'🤵')+'<small><span class="w">'+(p.t=='D'?'Dama ':'Criado ')+'</span>'+p.id[1]+'</small>';e.onclick=()=>click(p);p.el=e;scene.appendChild(e)});
   boatSide='A';moving=false;over=false;log=[];renderLog();document.getElementById('over').style.display='none';say('Toca a los personajes para subirlos al barco (máx. 2).');layout();
 }
 function say(t){msg.textContent=t}
 function boatX(){const W=scene.clientWidth,bw=W*.24;return boatSide=='A'?bw-14:W-bw-130+14}
 function layout(){
   const W=scene.clientWidth,bw=W*.24,bx=boatX();
+  // k reduce el tamaño de los personajes cuando la orilla es angosta (celulares)
+  const k=Math.max(.45,Math.min(1,(bw-12)/150)),slot=50*k,off=(bw-6-150*k)/2;
+  scene.style.setProperty('--k',k);
+  scene.classList.toggle('compact',k<.8);
   boatEl.style.left=bx+'px';
-  const cnt={A:0,B:0,boat:0};
+  const left={A:off,B:W-bw+6+off};        // inicio de la fila en cada orilla
+  const yD=48,yC=48+56*k+30;              // fila de damas arriba, criados abajo
+  cats.forEach(c=>{
+    c.el.style.left=left[c.side]+'px';c.el.style.width=150*k+'px';
+    c.el.style.top=((c.t=='D'?yD:yC)-15)+'px';
+  });
+  let onBoat=0;
   people.forEach(p=>{
-    const i=cnt[p.side]++;let x,y;
-    if(p.side=='boat'){x=bx+8+i*58;y=190;}
-    else{const cols=Math.max(1,Math.floor((bw-10)/50));x=(p.side=='A'?4:W-bw+10)+(i%cols)*50;y=40+Math.floor(i/cols)*70;}
+    let x,y;
+    if(p.side=='boat'){x=bx+8+(onBoat++)*58;y=190;}
+    else{ // casilla fija según el número del personaje
+      x=left[p.side]+(+p.id[1]-1)*slot+(slot-46*k)/2;
+      y=p.t=='D'?yD:yC;
+    }
     p.el.style.left=x+'px';p.el.style.top=y+'px';
   });
-  const n=cnt.boat;goBtn.disabled=moving||n<1||n>2;
+  goBtn.disabled=moving||onBoat<1||onBoat>2;
 }
 function click(p){
   if(moving||over||playing)return;
@@ -155,4 +180,6 @@ document.getElementById('ex').onclick=()=>{document.getElementById('combo').valu
 
 addEventListener('resize',layout);
 init();
-</script></body></html>
+</script>
+</body>
+</html>
