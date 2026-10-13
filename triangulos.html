@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Cazador de triángulos</title>
+<style>
+  :root{
+    --bg:#f6f4ef;
+    --fg:#20201c;
+    --muted:#6b6a63;
+    --panel:#ffffff;
+    --border:#dedad0;
+    --line:#20201c;
+    --accent:#c05621;
+    --accent-soft:#f4dcc9;
+    --found:#2f7a63;
+    --found-soft:#d9ece5;
+    --danger:#b3432b;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    box-sizing: border-box;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#1c1b18;
+      --fg:#efece4;
+      --muted:#a8a498;
+      --panel:#26251f;
+      --border:#3a3830;
+      --line:#efece4;
+      --accent:#e08a4f;
+      --accent-soft:#4a3324;
+      --found:#63c7a6;
+      --found-soft:#1f3a32;
+      --danger:#e0836a;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#1c1b18; --fg:#efece4; --muted:#a8a498; --panel:#26251f;
+    --border:#3a3830; --line:#efece4; --accent:#e08a4f; --accent-soft:#4a3324;
+    --found:#63c7a6; --found-soft:#1f3a32; --danger:#e0836a;
+  }
+  html,body{height:100%;}
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--fg);
+    font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  header{
+    padding:28px 20px 10px;
+    max-width:1100px;
+    margin:0 auto;
+  }
+  h1{
+    font-size:1.7rem;
+    margin:0 0 6px;
+    letter-spacing:0.2px;
+    font-weight:600;
+  }
+  p.lead{
+    margin:0;
+    color:var(--muted);
+    font-size:0.98rem;
+    line-height:1.5;
+    max-width:62ch;
+  }
+  .tabs{
+    display:flex;
+    gap:8px;
+    margin:18px auto 0;
+    max-width:1100px;
+    padding:0 20px;
+  }
+  .tab-btn{
+    font-family:inherit;
+    font-size:0.95rem;
+    padding:9px 18px;
+    border-radius:999px;
+    border:1px solid var(--border);
+    background:transparent;
+    color:var(--fg);
+    cursor:pointer;
+  }
+  .tab-btn.active{
+    background:var(--fg);
+    color:var(--bg);
+    border-color:var(--fg);
+  }
+  main{
+    max-width:1100px;
+    margin:0 auto;
+    padding:18px 20px 60px;
+  }
+  .figure-panel{ display:none; }
+  .figure-panel.active{ display:block; }
+
+  .toolbar{
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    gap:14px;
+    margin-bottom:14px;
+    padding:12px 16px;
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:12px;
+  }
+  .counter{
+    font-size:1.05rem;
+    font-weight:600;
+  }
+  .counter span{ color:var(--accent); }
+  .btn{
+    font-family:inherit;
+    font-size:0.88rem;
+    padding:7px 14px;
+    border-radius:8px;
+    border:1px solid var(--border);
+    background:var(--panel);
+    color:var(--fg);
+    cursor:pointer;
+  }
+  .btn:hover{ border-color:var(--accent); color:var(--accent); }
+  .reveal-note{
+    font-size:0.9rem;
+    color:var(--muted);
+  }
+
+  .workspace{
+    display:grid;
+    grid-template-columns: 1.5fr 1fr;
+    gap:20px;
+    align-items:start;
+  }
+  @media (max-width: 760px){
+    .workspace{ grid-template-columns: 1fr; }
+  }
+
+  .canvas-wrap{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:10px;
+  }
+  svg.stage{
+    width:100%;
+    height:auto;
+    display:block;
+    touch-action: manipulation;
+  }
+  .base-line{
+    stroke:var(--line);
+    stroke-width:2;
+    fill:none;
+  }
+  .vertex{
+    fill:var(--panel);
+    stroke:var(--line);
+    stroke-width:2;
+    cursor:pointer;
+  }
+  .vertex:hover{ stroke:var(--accent); }
+  .vertex.selected{
+    fill:var(--accent);
+    stroke:var(--accent);
+  }
+  .preview-path{
+    stroke:var(--accent);
+    stroke-width:2;
+    stroke-dasharray:5 5;
+    fill:var(--accent-soft);
+    fill-opacity:0.35;
+    pointer-events:none;
+  }
+  .point-label{
+    font-size:17px;
+    font-weight:700;
+    fill:var(--danger);
+    pointer-events:none;
+  }
+  .order-badge{
+    font-size:15px;
+    font-weight:700;
+    fill:var(--accent);
+    pointer-events:none;
+  }
+  .flash-mark{
+    fill-opacity:0.55;
+    stroke-width:2;
+    pointer-events:none;
+  }
+  .found-mark{
+    fill-opacity:0.18;
+    stroke-width:1.5;
+    pointer-events:none;
+  }
+  .found-label{
+    font-size:14px;
+    font-weight:800;
+    text-anchor:middle;
+    dominant-baseline:middle;
+    pointer-events:none;
+    paint-order: stroke;
+    stroke: var(--panel);
+    stroke-width: 3px;
+  }
+
+  .gallery-panel{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:14px;
+    min-height:200px;
+  }
+  .gallery-panel h2{
+    font-size:0.95rem;
+    margin:0 0 10px;
+    color:var(--muted);
+    font-weight:600;
+  }
+  .gallery-grid{
+    display:grid;
+    grid-template-columns: repeat(auto-fill, minmax(64px,1fr));
+    gap:10px;
+  }
+  .tri-card{
+    aspect-ratio:1/1;
+    background:var(--found-soft);
+    border:1px solid var(--found);
+    border-radius:10px;
+    padding:6px;
+  }
+  .tri-card.hidden{ visibility:hidden; }
+  .tri-card svg{ width:100%; height:100%; display:block; }
+  .mini-tri{
+    fill-opacity:0.35;
+    stroke-width:3;
+  }
+  .mini-label{
+    font-size:22px;
+    font-weight:800;
+    text-anchor:middle;
+    dominant-baseline:middle;
+    paint-order: stroke;
+    stroke: var(--panel);
+    stroke-width: 4px;
+  }
+  .gallery-empty{
+    color:var(--muted);
+    font-size:0.9rem;
+  }
+
+  .flyer{
+    position:fixed;
+    z-index:999;
+    pointer-events:none;
+    transform-origin: top left;
+    transition: transform 0.7s cubic-bezier(.2,.7,.3,1);
+    filter: drop-shadow(0 6px 10px rgba(0,0,0,0.25));
+  }
+
+  #toast{
+    position:fixed;
+    left:50%;
+    bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+    transform:translateX(-50%) translateY(20px);
+    background:var(--fg);
+    color:var(--bg);
+    padding:11px 18px;
+    border-radius:10px;
+    font-size:0.9rem;
+    opacity:0;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+    pointer-events:none;
+    max-width:80vw;
+    text-align:center;
+    z-index:1000;
+  }
+  #toast.show{
+    opacity:1;
+    transform:translateX(-50%) translateY(0);
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Cazador de triángulos</h1>
+  <p class="lead">Toca 3 vértices o cruces de líneas de la figura, en el orden que quieras. Si forman un triángulo real (con lados que existen de verdad en el dibujo), se marcará con un número y saldrá una copia en la galería.</p>
+</header>
+
+<div class="tabs">
+  <button class="tab-btn active" data-tab="f1">Figura 1</button>
+  <button class="tab-btn" data-tab="f2">Figura 2</button>
+</div>
+
+<main>
+
+  <section class="figure-panel active" id="panel-f1">
+    <div class="toolbar">
+      <div class="counter">Encontrados: <span id="count-f1">0</span></div>
+      <button class="btn" data-action="reset" data-fig="f1">Reiniciar figura</button>
+      <button class="btn" data-action="reveal" data-fig="f1">Revelar total posible</button>
+      <span class="reveal-note" id="reveal-f1"></span>
+    </div>
+    <div class="workspace">
+      <div class="canvas-wrap">
+        <svg class="stage" id="svg-f1" viewBox="-30 -10 760 590" xmlns="http://www.w3.org/2000/svg">
+          <g id="lines-f1"></g>
+          <g id="mark-f1"></g>
+          <g id="preview-f1"></g>
+          <g id="points-f1"></g>
+          <g id="badge-f1"></g>
+        </svg>
+      </div>
+      <div class="gallery-panel">
+        <h2>Triángulos extraídos</h2>
+        <div class="gallery-grid" id="gallery-f1">
+          <div class="gallery-empty">Aún no has sacado ninguno.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="figure-panel" id="panel-f2">
+    <div class="toolbar">
+      <div class="counter">Encontrados: <span id="count-f2">0</span></div>
+      <button class="btn" data-action="reset" data-fig="f2">Reiniciar figura</button>
+      <button class="btn" data-action="reveal" data-fig="f2">Revelar total posible</button>
+      <span class="reveal-note" id="reveal-f2"></span>
+    </div>
+    <div class="workspace">
+      <div class="canvas-wrap">
+        <svg class="stage" id="svg-f2" viewBox="-30 -10 760 590" xmlns="http://www.w3.org/2000/svg">
+          <g id="lines-f2"></g>
+          <g id="mark-f2"></g>
+          <g id="preview-f2"></g>
+          <g id="points-f2"></g>
+          <g id="badge-f2"></g>
+        </svg>
+      </div>
+      <div class="gallery-panel">
+        <h2>Triángulos extraídos</h2>
+        <div class="gallery-grid" id="gallery-f2">
+          <div class="gallery-empty">Aún no has sacado ninguno.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<div id="toast"></div>
+
+<script>
+const svgNS = "http://www.w3.org/2000/svg";
+const TRI_COLORS = [
+  '#c0392b', '#2980b9', '#27ae60', '#8e44ad', '#d35400',
+  '#16a085', '#e91e63', '#f39c12', '#3f51b5', '#00897b',
+  '#6d4c41', '#546e7a', '#c2185b', '#7cb342'
+];
+
+// ---------- geometry helpers ----------
+function segIntersect(p1,p2,p3,p4){
+  const d1x=p2.x-p1.x, d1y=p2.y-p1.y;
+  const d2x=p4.x-p3.x, d2y=p4.y-p3.y;
+  const denom = d1x*d2y - d1y*d2x;
+  if (Math.abs(denom) < 1e-9) return null;
+  const t = ((p3.x-p1.x)*d2y - (p3.y-p1.y)*d2x)/denom;
+  const u = ((p3.x-p1.x)*d1y - (p3.y-p1.y)*d1x)/denom;
+  const eps = 1e-6;
+  if (t < -eps || t > 1+eps || u < -eps || u > 1+eps) return null;
+  return {x:p1.x+t*d1x, y:p1.y+t*d1y};
+}
+function onSegment(line, p, eps){
+  const [a,b] = line;
+  const lenAB = Math.hypot(b.x-a.x, b.y-a.y);
+  const cross = (b.x-a.x)*(p.y-a.y) - (b.y-a.y)*(p.x-a.x);
+  if (Math.abs(cross)/lenAB > eps) return false;
+  const dot = (p.x-a.x)*(b.x-a.x) + (p.y-a.y)*(b.y-a.y);
+  if (dot < -eps*lenAB) return false;
+  if (dot > lenAB*lenAB + eps*lenAB) return false;
+  return true;
+}
+function commonLineExists(lines, p, q, eps){
+  return lines.some(line => onSegment(line,p,eps) && onSegment(line,q,eps));
+}
+function isValidTriangle(lines, p1, p2, p3){
+  const area2 = (p2.x-p1.x)*(p3.y-p1.y) - (p2.y-p1.y)*(p3.x-p1.x);
+  const d12 = Math.hypot(p2.x-p1.x, p2.y-p1.y);
+  const d13 = Math.hypot(p3.x-p1.x, p3.y-p1.y);
+  const d23 = Math.hypot(p3.x-p2.x, p3.y-p2.y);
+  const maxSide = Math.max(d12, d13, d23);
+  if (maxSide < 1e-6) return false;
+  // altura real del tercer punto respecto al lado más largo: si es casi 0,
+  // los 3 puntos están alineados (aunque el área bruta no sea exactamente 0
+  // por el redondeo de coordenadas en puntos de intersección).
+  const height = Math.abs(area2) / maxSide;
+  if (height < 3) return false;
+  const eps = 1.6;
+  return commonLineExists(lines,p1,p2,eps) &&
+         commonLineExists(lines,p2,p3,eps) &&
+         commonLineExists(lines,p1,p3,eps);
+}
+function buildPoints(lines){
+  const pts = [];
+  function addPoint(p){
+    for (const q of pts){
+      if (Math.hypot(q.x-p.x, q.y-p.y) < 4) return q;
+    }
+    const np = {x: Math.round(p.x*10)/10, y: Math.round(p.y*10)/10, id: pts.length};
+    pts.push(np);
+    return np;
+  }
+  lines.forEach(([a,b]) => { addPoint(a); addPoint(b); });
+  for (let i=0;i<lines.length;i++){
+    for (let j=i+1;j<lines.length;j++){
+      const ip = segIntersect(lines[i][0], lines[i][1], lines[j][0], lines[j][1]);
+      if (ip) addPoint(ip);
+    }
+  }
+  return pts;
+}
+function countAllTriangles(lines, pts){
+  let count = 0;
+  for (let i=0;i<pts.length;i++)
+    for (let j=i+1;j<pts.length;j++)
+      for (let k=j+1;k<pts.length;k++)
+        if (isValidTriangle(lines, pts[i], pts[j], pts[k])) count++;
+  return count;
+}
+function buildLabelMap(pts, namedCoords, extraLabels){
+  const map = {};
+  const used = new Set();
+  Object.entries(namedCoords).forEach(([letter, coord]) => {
+    let best=null, bestD=Infinity;
+    pts.forEach(p => {
+      const d = Math.hypot(p.x-coord.x, p.y-coord.y);
+      if (d < bestD){ bestD=d; best=p; }
+    });
+    map[best.id] = letter;
+    used.add(best.id);
+  });
+  const remaining = pts.filter(p => !used.has(p.id)).sort((a,b) => a.y-b.y || a.x-b.x);
+  remaining.forEach((p,i) => { map[p.id] = extraLabels[i]; });
+  return map;
+}
+
+// ---------- figure definitions ----------
+const P1 = {
+  A:{x:350,y:10}, BL:{x:10,y:540}, BR:{x:690,y:540},
+  L:{x:215,y:540}, C:{x:350,y:540}, R:{x:485,y:540}, M:{x:350,y:350}
+};
+const lines1 = [
+  [P1.A, P1.BL], [P1.A, P1.L], [P1.A, P1.C], [P1.A, P1.R], [P1.A, P1.BR],
+  [P1.BL, P1.BR], [P1.M, P1.BL], [P1.M, P1.BR]
+];
+
+const P2 = {
+  A:{x:350,y:10}, BL:{x:10,y:540}, BR:{x:690,y:540}, C:{x:350,y:540},
+  LP:{x:135,y:345}, RP:{x:565,y:345}
+};
+const lines2 = [
+  [P2.A, P2.BL], [P2.A, P2.BR], [P2.BL, P2.BR],
+  [P2.LP, P2.RP], [P2.A, P2.C], [P2.LP, P2.BR], [P2.RP, P2.BL],
+  [P2.LP, P2.C], [P2.RP, P2.C]
+];
+
+const NAMED1 = { A:P1.A, B:P1.L, C:P1.C, D:P1.R, E:P1.BL, F:P1.BR, G:P1.M };
+const EXTRA1 = ['H','I'];
+
+const NAMED2 = { A:P2.A, B:P2.LP, C:P2.RP, F:P2.BL, G:P2.C, H:P2.BR };
+const EXTRA2 = ['D','E','I','J'];
+
+// ---------- figure runtime state ----------
+function makeFig(key, lines, namedCoords, extraLabels){
+  const points = buildPoints(lines);
+  return {
+    key,
+    lines,
+    points,
+    labels: buildLabelMap(points, namedCoords, extraLabels),
+    selected: [],
+    found: new Map(),
+    counter: 0,
+    totalKnown: null,
+    svg: document.getElementById('svg-'+key),
+    linesLayer: document.getElementById('lines-'+key),
+    markLayer: document.getElementById('mark-'+key),
+    previewLayer: document.getElementById('preview-'+key),
+    pointsLayer: document.getElementById('points-'+key),
+    badgeLayer: document.getElementById('badge-'+key),
+    gallery: document.getElementById('gallery-'+key),
+    countEl: document.getElementById('count-'+key),
+    revealEl: document.getElementById('reveal-'+key)
+  };
+}
+
+const figs = {
+  f1: makeFig('f1', lines1, NAMED1, EXTRA1),
+  f2: makeFig('f2', lines2, NAMED2, EXTRA2)
+};
+
+function renderFigure(fig){
+  fig.lines.forEach(([a,b]) => {
+    const line = document.createElementNS(svgNS,'line');
+    line.setAttribute('x1',a.x); line.setAttribute('y1',a.y);
+    line.setAttribute('x2',b.x); line.setAttribute('y2',b.y);
+    line.setAttribute('class','base-line');
+    fig.linesLayer.appendChild(line);
+  });
+  fig.points.forEach(p => {
+    const c = document.createElementNS(svgNS,'circle');
+    c.setAttribute('cx',p.x); c.setAttribute('cy',p.y);
+    c.setAttribute('r', 9);
+    c.setAttribute('class','vertex');
+    c.dataset.id = p.id;
+    c.addEventListener('click', () => onPointClick(fig, p));
+    fig.pointsLayer.appendChild(c);
+
+    const letter = fig.labels[p.id];
+    if (letter){
+      const t = document.createElementNS(svgNS,'text');
+      let offX = p.x < 350 ? -18 : (p.x > 350 ? 16 : 12);
+      if (p.x < 30) offX = 14;
+      if (p.x > 670) offX = -22;
+      const offY = p.y < 300 ? 22 : -14;
+      t.setAttribute('x', p.x + offX);
+      t.setAttribute('y', p.y + offY);
+      t.setAttribute('class','point-label');
+      t.textContent = letter;
+      fig.pointsLayer.appendChild(t);
+    }
+  });
+}
+renderFigure(figs.f1);
+renderFigure(figs.f2);
+restoreFig(figs.f1);
+restoreFig(figs.f2);
+
+function updateSelectionVisuals(fig){
+  fig.pointsLayer.querySelectorAll('.vertex').forEach(c => {
+    const id = Number(c.dataset.id);
+    c.classList.toggle('selected', fig.selected.some(p => p.id === id));
+  });
+  fig.badgeLayer.innerHTML = '';
+  fig.selected.forEach((p,i) => {
+    const t = document.createElementNS(svgNS,'text');
+    t.setAttribute('x', p.x+10); t.setAttribute('y', p.y-10);
+    t.setAttribute('class','order-badge');
+    t.textContent = String(i+1);
+    fig.badgeLayer.appendChild(t);
+  });
+  fig.previewLayer.innerHTML = '';
+  if (fig.selected.length >= 2){
+    let d = 'M ' + fig.selected.map(p => `${p.x},${p.y}`).join(' L ');
+    if (fig.selected.length === 3) d += ' Z';
+    const path = document.createElementNS(svgNS,'path');
+    path.setAttribute('d', d);
+    path.setAttribute('class','preview-path');
+    fig.previewLayer.appendChild(path);
+  }
+}
+
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(showToast._h);
+  showToast._h = setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+function svgToScreen(svg, x, y){
+  const pt = svg.createSVGPoint();
+  pt.x = x; pt.y = y;
+  const s = pt.matrixTransform(svg.getScreenCTM());
+  return {x:s.x, y:s.y};
+}
+
+function onPointClick(fig, pt){
+  const idx = fig.selected.findIndex(p => p.id === pt.id);
+  if (idx >= 0){
+    fig.selected.splice(idx,1);
+    updateSelectionVisuals(fig);
+    return;
+  }
+  if (fig.selected.length >= 3) return;
+  fig.selected.push(pt);
+  updateSelectionVisuals(fig);
+  if (fig.selected.length === 3){
+    const [a,b,c] = fig.selected;
+    if (isValidTriangle(fig.lines, a, b, c)){
+      extractTriangle(fig, a, b, c);
+    } else {
+      showToast('Esos 3 puntos no forman un triángulo con las líneas trazadas. Intenta de nuevo.');
+    }
+    fig.selected = [];
+    setTimeout(() => updateSelectionVisuals(fig), 250);
+  }
+}
+
+function extractTriangle(fig, p1, p2, p3){
+  const key = [p1.id,p2.id,p3.id].sort((a,b)=>a-b).join('-');
+  if (fig.found.has(key)){
+    const prev = fig.found.get(key);
+    showToast(`Ya habías sacado el triángulo ${prev.letters} (Nº ${prev.num}).`);
+    return;
+  }
+  const num = ++fig.counter;
+  const letters = [p1,p2,p3]
+    .map(p => fig.labels[p.id] || '?')
+    .sort()
+    .join('');
+  const color = TRI_COLORS[(num - 1) % TRI_COLORS.length];
+  const entry = { num, letters, color };
+  fig.found.set(key, entry);
+  fig.countEl.textContent = String(fig.counter);
+  drawFoundMark(fig, p1, p2, p3, entry, true);
+  saveProgress(fig);
+}
+
+function drawFoundMark(fig, p1, p2, p3, entry, animate){
+  const { letters, color } = entry;
+  const emptyMsg = fig.gallery.querySelector('.gallery-empty');
+  if (emptyMsg) emptyMsg.remove();
+
+  // permanent tint + letras en la figura principal
+  const d = `M ${p1.x},${p1.y} L ${p2.x},${p2.y} L ${p3.x},${p3.y} Z`;
+  const flash = document.createElementNS(svgNS,'path');
+  flash.setAttribute('d', d);
+  flash.setAttribute('class', animate ? 'flash-mark' : 'found-mark');
+  flash.style.fill = color;
+  flash.style.stroke = color;
+  fig.markLayer.appendChild(flash);
+  if (animate){
+    setTimeout(() => {
+      flash.setAttribute('class','found-mark');
+    }, 550);
+  }
+
+  const cx = (p1.x+p2.x+p3.x)/3, cy = (p1.y+p2.y+p3.y)/3;
+  const label = document.createElementNS(svgNS,'text');
+  label.setAttribute('x', cx); label.setAttribute('y', cy);
+  label.setAttribute('class','found-label');
+  label.style.fill = color;
+  label.textContent = letters;
+  fig.markLayer.appendChild(label);
+
+  // build a small self-contained svg markup for the mini card / flyer
+  const minX = Math.min(p1.x,p2.x,p3.x), maxX = Math.max(p1.x,p2.x,p3.x);
+  const minY = Math.min(p1.y,p2.y,p3.y), maxY = Math.max(p1.y,p2.y,p3.y);
+  const pad = 12;
+  const w = (maxX-minX) + pad*2, h = (maxY-minY) + pad*2;
+  const lp = [p1,p2,p3].map(p => ({x:p.x-minX+pad, y:p.y-minY+pad}));
+  const lcx = (lp[0].x+lp[1].x+lp[2].x)/3, lcy = (lp[0].y+lp[1].y+lp[2].y)/3;
+  const miniD = `M ${lp[0].x},${lp[0].y} L ${lp[1].x},${lp[1].y} L ${lp[2].x},${lp[2].y} Z`;
+  const miniSvg = `<svg viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg">
+      <path d="${miniD}" class="mini-tri" style="fill:${color};stroke:${color}"></path>
+      <text x="${lcx}" y="${lcy}" class="mini-label" style="fill:${color}">${letters}</text>
+    </svg>`;
+
+  const card = document.createElement('div');
+  card.className = 'tri-card hidden';
+  card.style.borderColor = color;
+  card.style.background = color + '22';
+  card.innerHTML = miniSvg;
+  fig.gallery.appendChild(card);
+
+  if (!animate){
+    card.classList.remove('hidden');
+    return;
+  }
+
+  requestAnimationFrame(() => {
+    const targetRect = card.getBoundingClientRect();
+    const srcTL = svgToScreen(fig.svg, minX, minY);
+    const srcBR = svgToScreen(fig.svg, maxX, maxY);
+    const sourceRect = {
+      left: srcTL.x, top: srcTL.y,
+      width: srcBR.x - srcTL.x, height: srcBR.y - srcTL.y
+    };
+    if (sourceRect.width < 1 || sourceRect.height < 1){
+      card.classList.remove('hidden');
+      return;
+    }
+    const flyer = document.createElement('div');
+    flyer.className = 'flyer';
+    flyer.style.left = sourceRect.left + 'px';
+    flyer.style.top = sourceRect.top + 'px';
+    flyer.style.width = sourceRect.width + 'px';
+    flyer.style.height = sourceRect.height + 'px';
+    flyer.innerHTML = miniSvg;
+    document.body.appendChild(flyer);
+
+    const scaleX = targetRect.width / sourceRect.width;
+    const scaleY = targetRect.height / sourceRect.height;
+    const dx = targetRect.left - sourceRect.left;
+    const dy = targetRect.top - sourceRect.top;
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        flyer.style.transform = `translate(${dx}px,${dy}px) scale(${scaleX},${scaleY})`;
+      });
+    });
+
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      flyer.remove();
+      card.classList.remove('hidden');
+    };
+    flyer.addEventListener('transitionend', finish, {once:true});
+    setTimeout(finish, 900);
+  });
+}
+
+function resetFig(fig, keepStorage){
+  fig.selected = [];
+  fig.found = new Map();
+  fig.counter = 0;
+  fig.countEl.textContent = '0';
+  fig.markLayer.innerHTML = '';
+  fig.previewLayer.innerHTML = '';
+  fig.badgeLayer.innerHTML = '';
+  fig.gallery.innerHTML = '<div class="gallery-empty">Aún no has sacado ninguno.</div>';
+  fig.revealEl.textContent = '';
+  updateSelectionVisuals(fig);
+  if (!keepStorage) saveProgress(fig);
+}
+
+// ---------- progreso guardado en el navegador ----------
+function saveProgress(fig){
+  try{
+    const data = {
+      counter: fig.counter,
+      found: Array.from(fig.found.entries())
+    };
+    localStorage.setItem('triangulos-'+fig.key, JSON.stringify(data));
+  }catch(e){ /* almacenamiento no disponible, se ignora */ }
+}
+function loadProgress(fig){
+  try{
+    const raw = localStorage.getItem('triangulos-'+fig.key);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  }catch(e){ return null; }
+}
+function restoreFig(fig){
+  const data = loadProgress(fig);
+  if (!data || !data.found || !data.found.length) return;
+  const emptyMsg = fig.gallery.querySelector('.gallery-empty');
+  if (emptyMsg) emptyMsg.remove();
+  let discarded = false;
+  data.found.forEach(([key, entry]) => {
+    const ids = key.split('-').map(Number);
+    const pts = ids.map(id => fig.points.find(p => p.id === id)).filter(Boolean);
+    if (pts.length !== 3) return;
+    // descarta triángulos guardados por una versión anterior con el bug
+    // de puntos alineados (3 puntos en línea recta) mal validados
+    if (!isValidTriangle(fig.lines, pts[0], pts[1], pts[2])){
+      discarded = true;
+      return;
+    }
+    // compatibilidad con guardados antiguos (solo número, sin letras/color)
+    if (typeof entry === 'number'){
+      const letters = pts.map(p => fig.labels[p.id] || '?').sort().join('');
+      entry = { num: entry, letters, color: TRI_COLORS[(entry - 1) % TRI_COLORS.length] };
+    }
+    fig.found.set(key, entry);
+    drawFoundMark(fig, pts[0], pts[1], pts[2], entry, false);
+  });
+  fig.counter = fig.found.size;
+  fig.countEl.textContent = String(fig.counter);
+  if (discarded) saveProgress(fig);
+}
+
+// ---------- controls ----------
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.figure-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('panel-'+btn.dataset.tab).classList.add('active');
+  });
+});
+
+document.querySelectorAll('[data-action="reset"]').forEach(btn => {
+  btn.addEventListener('click', () => resetFig(figs[btn.dataset.fig]));
+});
+document.querySelectorAll('[data-action="reveal"]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const fig = figs[btn.dataset.fig];
+    if (fig.totalKnown === null){
+      fig.totalKnown = countAllTriangles(fig.lines, fig.points);
+    }
+    fig.revealEl.textContent = `Total de triángulos distintos en esta figura: ${fig.totalKnown}. Llevas ${fig.counter}.`;
+  });
+});
+</script>
+</body>
+</html>
